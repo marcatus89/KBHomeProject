@@ -9,51 +9,149 @@
     <a href="/admin/purchase-orders/add" class="btn btn-primary mb-3">Tạo Đơn nhập hàng mới</a>
 </AuthorizeView>
 
+<!-- THANH TÌM KIẾM -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input @bind="searchTerm" class="form-control" placeholder="Tìm theo số phiếu, nhà cung cấp, trạng thái..." />
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-primary me-2" @onclick="SearchPurchaseOrders">Tìm kiếm</button>
+        <button class="btn btn-secondary" @onclick="ClearSearch">Xóa lọc</button>
+    </div>
+</div>
 
-@if (purchaseOrders == null)
+@if (pagedOrders == null)
 {
     <LoadingSpinner />
+}
+else if (!pagedOrders.Any())
+{
+    <div class="alert alert-info mt-4">
+        Không có đơn nhập hàng nào phù hợp.
+    </div>
 }
 else
 {
     <table class="table table-hover">
         <thead>
             <tr>
-                @* --- THÊM CỘT "SỐ PHIẾU" VÀO ĐÂY --- *@
                 <th>Số Phiếu</th>
                 <th>Nhà cung cấp</th>
                 <th>Ngày đặt hàng</th>
                 <th>Trạng thái</th>
-                <th>Xác nhận</th> 
+                <th>Xác nhận</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var po in purchaseOrders)
+            @foreach (var po in pagedOrders)
             {
                 <tr>
-                    @* --- HIỂN THỊ DỮ LIỆU CỦA SỐ PHIẾU --- *@
                     <td><strong>@po.PurchaseOrderNumber</strong></td>
                     <td>@po.Supplier?.Name</td>
                     <td>@po.OrderDate.ToString("dd/MM/yyyy")</td>
-                    <td><span class="badge @(po.Status == "Đã nhận hàng" ? "bg-success" : "bg-warning text-dark")">@po.Status</span></td>
                     <td>
-                        <a href="@($"/admin/purchase-orders/{po.Id}")" class="btn btn-sm btn-info">Xem/Nhận hàng</a>
+                        <span class="badge @(po.Status == "Đã nhận hàng" ? "bg-success" : "bg-warning text-dark")">
+                            @po.Status
+                        </span>
+                    </td>
+                    <td>
+                        <a href="@($"/admin/purchase-orders/{po.Id}")" class="btn btn-sm btn-info">
+                            Xem/Nhận hàng
+                        </a>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-}
 
-@code {
-    private List<PurchaseOrder>? purchaseOrders;
-
-    protected override async Task OnInitializedAsync()
+    <!-- PHÂN TRANG -->
+    @if (totalPages > 1)
     {
-        purchaseOrders = await DbContext.PurchaseOrders
-            .Include(po => po.Supplier)
-            .OrderByDescending(po => po.OrderDate)
-            .ToListAsync();
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">Trước</button>
+                </li>
+
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                    </li>
+                }
+
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">Sau</button>
+                </li>
+            </ul>
+        </nav>
     }
 }
 
+@code {
+    private List<PurchaseOrder>? allOrders;
+    private IEnumerable<PurchaseOrder>? pagedOrders;
+
+    private string? searchTerm;
+
+    // Phân trang
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPurchaseOrders();
+    }
+
+    private async Task LoadPurchaseOrders()
+    {
+        var query = DbContext.PurchaseOrders
+            .Include(po => po.Supplier)
+            .AsQueryable();
+
+        // 🔍 Tìm kiếm theo số phiếu, tên nhà cung cấp, hoặc trạng thái
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            searchTerm = searchTerm.Trim().ToLower();
+            query = query.Where(po =>
+                po.PurchaseOrderNumber.ToLower().Contains(searchTerm) ||
+                (po.Supplier != null && po.Supplier.Name.ToLower().Contains(searchTerm)) ||
+                po.Status.ToLower().Contains(searchTerm));
+        }
+
+        // 📋 Lấy toàn bộ kết quả
+        allOrders = await query
+            .OrderByDescending(po => po.OrderDate)
+            .ToListAsync();
+
+        // 📄 Tính số trang
+        totalPages = (int)Math.Ceiling((double)allOrders.Count / pageSize);
+        if (totalPages == 0) totalPages = 1;
+
+        // 🧾 Lấy dữ liệu trang hiện tại
+        pagedOrders = allOrders
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task SearchPurchaseOrders()
+    {
+        currentPage = 1;
+        await LoadPurchaseOrders();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        currentPage = 1;
+        await LoadPurchaseOrders();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        currentPage = page;
+        await LoadPurchaseOrders();
+    }
+}

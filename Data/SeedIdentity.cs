@@ -17,7 +17,7 @@ namespace DoAnTotNghiep.Data
 
             // --- TẠO VAI TRÒ ---
             // Danh sách tất cả các vai trò cần có trong hệ thống
-            string[] roleNames = { "Admin", "Sales", "Accounting", "Warehouse", "Logistics", "Purchasing" };
+            string[] roleNames = { "Admin", "Sales", "Warehouse", "Logistics", "Purchasing" };
             foreach (var roleName in roleNames)
             {
                 // Chỉ tạo nếu vai trò chưa tồn tại
@@ -32,7 +32,7 @@ namespace DoAnTotNghiep.Data
             }
 
             // --- TẠO VÀ GÁN QUYỀN CHO ADMIN ---
-            var adminEmail = "admin@mybathroom.com";
+            var adminEmail = "admin@kbhome.vn";
             var adminUser = await userManager.FindByEmailAsync(adminEmail);
             if (adminUser == null)
             {
@@ -54,11 +54,10 @@ namespace DoAnTotNghiep.Data
             }
             
             // --- TẠO TÀI KHOẢN DEMO CHO CÁC PHÒNG BAN ---
-            await CreateUserIfNotExists(userManager, logger, "purchasing@mybathroom.com", "Password123!", "Purchasing");
-            await CreateUserIfNotExists(userManager, logger, "warehouse@mybathroom.com", "Password123!", "Warehouse");
-            await CreateUserIfNotExists(userManager, logger, "sales@mybathroom.com", "Password123!", "Sales");
-            await CreateUserIfNotExists(userManager, logger, "accounting@mybathroom.com", "Password123!", "Accounting");
-            await CreateUserIfNotExists(userManager, logger, "logistics@mybathroom.com", "Password123!", "Logistics");
+            await CreateUserIfNotExists(userManager, logger, "purchasing@kbhome.vn", "Password123!", "Purchasing");
+            await CreateUserIfNotExists(userManager, logger, "warehouse@kbhome.vn", "Password123!", "Warehouse");
+            await CreateUserIfNotExists(userManager, logger, "sales@kbhome.vn", "Password123!", "Sales");
+            await CreateUserIfNotExists(userManager, logger, "logistics@kbhome.vn", "Password123!", "Logistics");
         }
 
         private static async Task CreateUserIfNotExists(UserManager<IdentityUser> userManager, ILogger logger, string email, string password, string role)

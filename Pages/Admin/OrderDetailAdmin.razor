@@ -1,5 +1,5 @@
 @page "/admin/orders/{OrderId:int}"
-@attribute [Authorize(Roles = "Admin, Sales, Accounting, Warehouse, Logistics")]
+@attribute [Authorize(Roles = "Admin, Sales,Warehouse, Logistics")]
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
@@ -134,7 +134,7 @@ else
                         }
                     </AuthorizeView>
 
-                    <AuthorizeView Roles="Accounting">
+                    <AuthorizeView Roles="Admin">
                         @if (CurrentOrder.Status == "Chờ thanh toán")
                         {
                             <button class="btn btn-success w-100" @onclick='async () => { newStatus = "Đã thanh toán"; await UpdateStatus(); }'>Xác nhận Đã thanh toán</button>

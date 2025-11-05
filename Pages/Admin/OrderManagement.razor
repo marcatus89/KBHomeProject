@@ -1,18 +1,28 @@
 @page "/admin/orders"
-@attribute [Authorize(Roles = "Admin, Sales, Accounting, Warehouse, Logistics")]
+@attribute [Authorize(Roles = "Admin, Sales, Warehouse, Logistics")]
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Quản lý Đơn hàng</h3>
 
-@if (orderList == null)
+<!-- THANH TÌM KIẾM -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <input @bind="searchTerm" class="form-control" placeholder="Tìm ID / Tên KH / Trạng thái..." />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary me-2" @onclick="SearchOrders">Tìm kiếm</button>
+        <button class="btn btn-secondary" @onclick="ClearSearch">Xóa lọc</button>
+    </div>
+</div>
+
+@if (pagedOrders == null)
 {
     <LoadingSpinner />
 }
-else if (!orderList.Any())
+else if (!pagedOrders.Any())
 {
-    @* --- THÊM VÀO THÔNG BÁO KHI DANH SÁCH RỖNG --- *@
     <div class="alert alert-info mt-4">
         Không có đơn hàng nào phù hợp với vai trò của bạn ở thời điểm hiện tại.
     </div>
@@ -31,7 +41,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var order in orderList)
+            @foreach (var order in pagedOrders)
             {
                 <tr>
                     <td>@order.Id</td>
@@ -46,57 +56,115 @@ else
             }
         </tbody>
     </table>
+
+    <!-- PHÂN TRANG -->
+    @if (totalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">Trước</button>
+                </li>
+
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                    </li>
+                }
+
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">Sau</button>
+                </li>
+            </ul>
+        </nav>
+    }
 }
 
 @code {
-    private List<Order>? orderList;
+    private List<Order>? allOrders;
+    private IEnumerable<Order>? pagedOrders;
+
+    private string? searchTerm;
+
+    // Phân trang
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
         var query = DbContext.Orders.AsQueryable();
 
-        // Admin thấy tất cả
-        if (user.IsInRole("Admin"))
+        // ⚙️ Lọc theo vai trò
+        if (!user.IsInRole("Admin"))
         {
-            orderList = await query.OrderByDescending(o => o.OrderDate).ToListAsync();
-            return;
+            var allowedStatuses = new HashSet<string>();
+
+            if (user.IsInRole("Sales"))
+                allowedStatuses.Add("Chờ xác nhận");
+            if (user.IsInRole("Warehouse"))
+                allowedStatuses.Add("Đã thanh toán");
+            if (user.IsInRole("Logistics"))
+            {
+                allowedStatuses.Add("Sẵn sàng giao hàng");
+                allowedStatuses.Add("Đang giao");
+            }
+
+            if (allowedStatuses.Count > 0)
+                query = query.Where(o => allowedStatuses.Contains(o.Status));
+            else
+                query = query.Where(o => false);
         }
 
-        var allowedStatuses = new HashSet<string>();
-
-        if (user.IsInRole("Sales"))
+        // 🔍 Tìm kiếm theo ID, Tên khách hàng, hoặc Trạng thái
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            allowedStatuses.Add("Chờ xác nhận");
-        }
-        if (user.IsInRole("Accounting"))
-        {
-            allowedStatuses.Add("Chờ thanh toán");
-        }
-        if (user.IsInRole("Warehouse"))
-        {
-            allowedStatuses.Add("Đã thanh toán");
-        }
-        if (user.IsInRole("Logistics"))
-        {
-            allowedStatuses.Add("Sẵn sàng giao hàng");
-            allowedStatuses.Add("Đang giao");
+            searchTerm = searchTerm.Trim().ToLower();
+            query = query.Where(o =>
+                o.Id.ToString().Contains(searchTerm) ||
+                o.CustomerName.ToLower().Contains(searchTerm) ||
+                o.Status.ToLower().Contains(searchTerm));
         }
 
-       
-        if (allowedStatuses.Count > 0)
-        {
-            query = query.Where(o => allowedStatuses.Contains(o.Status));
-        }
-        else
-        {
-        
-            query = query.Where(o => false);
-        }
+        allOrders = await query.OrderByDescending(o => o.OrderDate).ToListAsync();
 
-        orderList = await query.OrderByDescending(o => o.OrderDate).ToListAsync();
+        // 📄 Tính số trang
+        totalPages = (int)Math.Ceiling((double)allOrders.Count / pageSize);
+        if (totalPages == 0) totalPages = 1;
+
+        // 🧾 Chia trang
+        pagedOrders = allOrders
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task SearchOrders()
+    {
+        currentPage = 1;
+        await LoadOrders();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        currentPage = 1;
+        await LoadOrders();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        currentPage = page;
+        await LoadOrders();
     }
 
     private string GetStatusBadgeClass(string status)
@@ -108,9 +176,8 @@ else
             "Đang giao" => "bg-primary",
             "Sẵn sàng giao hàng" => "bg-warning text-dark",
             "Chờ thanh toán" => "bg-info text-dark",
-            "Chờ xác nhận" => "bg-secondary", // thêm để hiển thị badge nhất quán
+            "Chờ xác nhận" => "bg-secondary",
             _ => "bg-secondary"
         };
     }
 }
-

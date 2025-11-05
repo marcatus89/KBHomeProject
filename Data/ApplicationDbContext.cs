@@ -19,8 +19,6 @@ namespace DoAnTotNghiep.Data
         public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
         public DbSet<PurchaseOrderItem> PurchaseOrderItems { get; set; }
         public DbSet<Shipment> Shipments { get; set; }
-
-        // --- THÊM BẢNG MỚI ĐỂ GHI LOG TỒN KHO ---
         public DbSet<InventoryLog> InventoryLogs { get; set; }
     }
 }
