@@ -1,0 +1,221 @@
+@page "/admin/orders/{OrderId:int}"
+@attribute [Authorize(Roles = "Admin, Sales, Accounting, Warehouse, Logistics")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h3>Chi tiết Đơn hàng #@OrderId</h3>
+
+@if (CurrentOrder == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    @* --- BIÊN BẢN GIAO HÀNG (ĐỂ IN) - ĐÃ ĐƯỢC TỐI ƯU HÓA --- *@
+    <div id="printable-area" class="printable-container">
+        <div class="invoice-header d-flex align-items-center mb-4">
+            <img src="/images/logo.png" class="invoice-logo me-4" alt="Company Logo" />
+            <div class="company-details">
+                <strong>Công ty TNHH KBHOME VIETNAM</strong><br />
+                 Showroom HCM 46 Song Hành, Phường Bình Trưng, Thành Phố Hồ Chí Minh.<br />
+                Hotline: +84 93 189 48 68
+            </div>
+        </div>
+        <h2 class="text-center mt-4">BIÊN BẢN GIAO NHẬN HÀNG HÓA</h2>
+        <p class="text-center">Số Đơn hàng: #@CurrentOrder.Id</p>
+        <hr />
+        <p><strong>Khách hàng:</strong> @CurrentOrder.CustomerName</p>
+        <p><strong>Địa chỉ giao hàng:</strong> @CurrentOrder.ShippingAddress</p>
+        <p><strong>Số điện thoại:</strong> @CurrentOrder.PhoneNumber</p>
+        <p><strong>Ngày giao hàng:</strong> @DateTime.Now.ToString("dd/MM/yyyy")</p>
+        <table class="table table-bordered mt-4">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Tên Sản phẩm</th>
+                    <th>Số lượng</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int count = 1; }
+                @foreach (var detail in CurrentOrder.OrderDetails)
+                {
+                    <tr>
+                        <td>@(count++)</td>
+                        <td>@detail.ProductName</td>
+                        <td>@detail.Quantity</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="signature-section">
+            <div class="signature-box">
+                <p><strong>Bên Giao</strong></p>
+                <p>(Ký, họ tên)</p>
+            </div>
+            <div class="signature-box">
+                <p><strong>Bên Nhận</strong></p>
+                <p>(Ký, họ tên)</p>
+            </div>
+        </div>
+        <p class="mt-4"><i>Xác nhận đã nhận đủ số lượng, đúng quy cách, chất lượng hàng hóa.</i></p>
+    </div>
+
+    @* --- GIAO DIỆN HIỂN THỊ TRÊN WEB --- *@
+    <div id="display-area" class="row">
+        <div class="col-md-8">
+            <div class="card">
+                 <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Đơn hàng #@CurrentOrder.Id | Trạng thái: 
+                        <span class="badge @GetStatusBadgeClass(CurrentOrder.Status)">@CurrentOrder.Status</span>
+                    </strong>
+                    <AuthorizeView Roles="Admin, Logistics">
+                         <button class="btn btn-outline-secondary btn-sm" @onclick="Print">
+                            <span class="oi oi-print"></span> In Biên bản
+                        </button>
+                    </AuthorizeView>
+                </div>
+                <div class="card-body">
+                    <h4>Thông tin Khách hàng</h4>
+                    <p><strong>Tên:</strong> @CurrentOrder.CustomerName</p>
+                    <p><strong>Địa chỉ:</strong> @CurrentOrder.ShippingAddress</p>
+                    <p><strong>Số điện thoại:</strong> @CurrentOrder.PhoneNumber</p>
+                    
+                    @if (!string.IsNullOrWhiteSpace(CurrentOrder.SalesNotes))
+                    {
+                        <hr/>
+                        <h4>Ghi chú Sales</h4>
+                        <p class="text-muted"><em>@CurrentOrder.SalesNotes</em></p>
+                    }
+
+                    @if(CurrentOrder.Shipment != null)
+                    {
+                        <hr/>
+                        <h4>Thông tin Giao hàng</h4>
+                        <p><strong>ĐV Vận chuyển:</strong> @CurrentOrder.Shipment.ShippingProvider</p>
+                        <p><strong>Mã vận đơn:</strong> @CurrentOrder.Shipment.TrackingNumber</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+             <div class="card">
+                <div class="card-header">Hành động</div>
+                <div class="card-body">
+                    <AuthorizeView Roles="Admin">
+                        <div class="mb-2">
+                            <label>Cập nhật trạng thái (Admin):</label>
+                            <InputSelect class="form-select" @bind-Value="newStatus">
+                                <option value="Chờ xác nhận">Chờ xác nhận</option>
+                                <option value="Chờ thanh toán">Chờ thanh toán</option>
+                                <option value="Đã thanh toán">Đã thanh toán</option>
+                                <option value="Sẵn sàng giao hàng">Sẵn sàng giao hàng</option>
+                                <option value="Đang giao">Đang giao</option>
+                                <option value="Hoàn thành">Hoàn thành</option>
+                                <option value="Đã hủy">Đã hủy</option>
+                            </InputSelect>
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="UpdateStatus">Cập nhật</button>
+                    </AuthorizeView>
+
+                     <AuthorizeView Roles="Sales">
+                        @if (CurrentOrder.Status == "Chờ xác nhận")
+                        {
+                            <div class="mb-2">
+                                <label><strong>Ghi chú Sales:</strong></label>
+                                <InputTextArea @bind-Value="salesNoteInput" class="form-control" rows="3" />
+                            </div>
+                             <div class="d-grid gap-2">
+                                <button class="btn btn-success" @onclick='async () => { newStatus = "Chờ thanh toán"; await UpdateStatus(); }'>Xác nhận đơn</button>
+                                <button class="btn btn-danger" @onclick='async () => { newStatus = "Đã hủy"; await UpdateStatus(); }'>Hủy đơn</button>
+                            </div>
+                        }
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Accounting">
+                        @if (CurrentOrder.Status == "Chờ thanh toán")
+                        {
+                            <button class="btn btn-success w-100" @onclick='async () => { newStatus = "Đã thanh toán"; await UpdateStatus(); }'>Xác nhận Đã thanh toán</button>
+                        }
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Warehouse">
+                        @if (CurrentOrder.Status == "Đã thanh toán")
+                        {
+                            <button class="btn btn-info w-100" @onclick='async () => { newStatus = "Sẵn sàng giao hàng"; await UpdateStatus(); }'>Xác nhận Đã chuẩn bị hàng</button>
+                        }
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Logistics">
+                        @if (CurrentOrder.Status == "Đang giao")
+                        {
+                             <button class="btn btn-success w-100" @onclick='async () => { newStatus = "Hoàn thành"; await UpdateStatus(); }'>Xác nhận Đã giao thành công</button>
+                        }
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+    private Order? CurrentOrder;
+    private string newStatus = string.Empty;
+    private string? salesNoteInput;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentOrder = await DbContext.Orders
+                                    .Include(o => o.Shipment)
+                                    .Include(o => o.OrderDetails)
+                                    .FirstOrDefaultAsync(o => o.Id == OrderId);
+        if (CurrentOrder != null)
+        {
+            newStatus = CurrentOrder.Status;
+            salesNoteInput = CurrentOrder.SalesNotes;
+        }
+    }
+
+    private async Task UpdateStatus()
+    {
+        if (CurrentOrder != null && !string.IsNullOrEmpty(newStatus))
+        {
+            CurrentOrder.Status = newStatus;
+            if(!string.IsNullOrWhiteSpace(salesNoteInput))
+            {
+                CurrentOrder.SalesNotes = salesNoteInput;
+            }
+
+            if (newStatus == "Hoàn thành" && CurrentOrder.Shipment != null)
+            {
+                CurrentOrder.Shipment.DeliveredDate = DateTime.Now;
+            }
+
+            await DbContext.SaveChangesAsync();
+            StateHasChanged();
+        }
+    }
+    
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Hoàn thành" => "bg-success",
+            "Đã hủy" => "bg-danger",
+            "Đang giao" => "bg-primary",
+            "Sẵn sàng giao hàng" => "bg-warning text-dark",
+            "Chờ thanh toán" => "bg-info text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task Print()
+    {
+        await JSRuntime.InvokeVoidAsync("triggerPrint");
+    }
+}
+

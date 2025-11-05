@@ -1,0 +1,56 @@
+@page "/admin/categories/add"
+@page "/admin/categories/edit/{CategoryId:int}"
+@attribute [Authorize(Roles = "Admin")]
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<h3>@Title</h3>
+
+<EditForm Model="@CurrentCategory" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="name">Tên danh mục</label>
+        <InputText id="name" class="form-control" @bind-Value="CurrentCategory.Name" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Lưu</button>
+    <a href="/admin/categories" class="btn btn-secondary">Hủy</a>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int CategoryId { get; set; }
+
+    private Category CurrentCategory { get; set; } = new();
+    private string Title { get; set; } = "Thêm danh mục mới";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CategoryId != 0) // Chế độ sửa
+        {
+            Title = "Chỉnh sửa danh mục";
+            var categoryFromDb = await DbContext.Categories.FindAsync(CategoryId);
+            if (categoryFromDb != null)
+            {
+                CurrentCategory = categoryFromDb;
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (CategoryId == 0) // Thêm mới
+        {
+            DbContext.Categories.Add(CurrentCategory);
+        }
+        else // Cập nhật
+        {
+            DbContext.Categories.Update(CurrentCategory);
+        }
+
+        await DbContext.SaveChangesAsync();
+        Navigation.NavigateTo("/admin/categories");
+    }
+}

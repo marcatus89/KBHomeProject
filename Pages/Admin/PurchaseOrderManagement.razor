@@ -1,0 +1,59 @@
+@page "/admin/purchase-orders"
+@attribute [Authorize(Roles = "Admin, Purchasing, Warehouse")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+
+<h3>Quản lý Đơn nhập hàng</h3>
+
+<AuthorizeView Roles="Admin, Purchasing">
+    <a href="/admin/purchase-orders/add" class="btn btn-primary mb-3">Tạo Đơn nhập hàng mới</a>
+</AuthorizeView>
+
+
+@if (purchaseOrders == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                @* --- THÊM CỘT "SỐ PHIẾU" VÀO ĐÂY --- *@
+                <th>Số Phiếu</th>
+                <th>Nhà cung cấp</th>
+                <th>Ngày đặt hàng</th>
+                <th>Trạng thái</th>
+                <th>Xác nhận</th> 
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var po in purchaseOrders)
+            {
+                <tr>
+                    @* --- HIỂN THỊ DỮ LIỆU CỦA SỐ PHIẾU --- *@
+                    <td><strong>@po.PurchaseOrderNumber</strong></td>
+                    <td>@po.Supplier?.Name</td>
+                    <td>@po.OrderDate.ToString("dd/MM/yyyy")</td>
+                    <td><span class="badge @(po.Status == "Đã nhận hàng" ? "bg-success" : "bg-warning text-dark")">@po.Status</span></td>
+                    <td>
+                        <a href="@($"/admin/purchase-orders/{po.Id}")" class="btn btn-sm btn-info">Xem/Nhận hàng</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PurchaseOrder>? purchaseOrders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        purchaseOrders = await DbContext.PurchaseOrders
+            .Include(po => po.Supplier)
+            .OrderByDescending(po => po.OrderDate)
+            .ToListAsync();
+    }
+}
+

@@ -1,0 +1,68 @@
+@page "/admin/shipments/create/{OrderId:int}"
+@attribute [Authorize(Roles = "Admin, Logistics")]
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<h3>Tạo Vận đơn cho Đơn hàng #@OrderId</h3>
+
+@if (order == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <EditForm Model="@newShipment" OnValidSubmit="HandleCreateShipment">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="card">
+            <div class="card-body">
+                 <p><strong>Khách hàng:</strong> @order.CustomerName</p>
+                 <p><strong>Địa chỉ giao:</strong> @order.ShippingAddress</p>
+                 <hr/>
+                <div class="form-group mb-3">
+                    <label>Đơn vị vận chuyển</label>
+                    <InputText class="form-control" @bind-Value="newShipment.ShippingProvider" placeholder="VD: Giao hàng Tiết kiệm" />
+                </div>
+                <div class="form-group mb-3">
+                    <label>Mã vận đơn (Tracking Number)</label>
+                    <InputText class="form-control" @bind-Value="newShipment.TrackingNumber" />
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-success">Xác nhận và Giao hàng</button>
+                <a href="/admin/logistics" class="btn btn-secondary">Hủy</a>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+    private Order? order;
+    private Shipment newShipment = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await DbContext.Orders.FindAsync(OrderId);
+    }
+
+    private async Task HandleCreateShipment()
+    {
+        if (order != null)
+        {
+            newShipment.OrderId = order.Id;
+            DbContext.Shipments.Add(newShipment);
+            
+            // Cập nhật trạng thái đơn hàng thành "Đang giao"
+            order.Status = "Đang giao";
+            
+            await DbContext.SaveChangesAsync();
+            Navigation.NavigateTo("/admin/logistics");
+        }
+    }
+}
+

@@ -1,0 +1,13 @@
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        @* Thay đổi link để trỏ đến trang Profile *@
+        <a href="/profile">Hello, @context.User.Identity?.Name!</a>
+        <a href="logout" class="nav-link btn btn-link">Log out</a>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Register">Register</a>
+        <a href="Identity/Account/Login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>

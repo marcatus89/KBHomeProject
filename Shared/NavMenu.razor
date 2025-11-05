@@ -1,0 +1,50 @@
+﻿@implements IDisposable
+@inject CartService CartSvc
+
+<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">DoAnTotNghiep</a>
+    <button class="navbar-toggler">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class="d-block">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="san-pham">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Sản phẩm
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="gio-hang">
+                <span class="oi oi-cart" aria-hidden="true"></span> Giỏ hàng (@CartSvc.Items.Count)
+            </NavLink>
+        </li>
+        
+        <AuthorizeView Roles="Admin, Sales, Accounting, Warehouse, Logistics">
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="admin">
+                    <span class="oi oi-cog" aria-hidden="true"></span> Quản trị
+                </NavLink>
+            </li>
+        </AuthorizeView>
+    </ul>
+</div>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        CartSvc.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        CartSvc.OnChange -= StateHasChanged;
+    }
+}

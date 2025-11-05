@@ -1,0 +1,119 @@
+@page "/admin/products"
+@attribute [Authorize(Roles = "Admin, Warehouse")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject ToastService ToastSvc
+
+<h3>Quản lý Sản phẩm</h3>
+
+<a href="/admin/products/add" class="btn btn-primary mb-3">Thêm sản phẩm mới</a>
+
+@if (productList == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Tên Sản phẩm</th>
+                <th>Giá</th>
+                <th class="text-center">Tồn kho</th>
+                <th class="text-center">Hiển thị</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in productList)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Price.ToString("n0") VNĐ</td>
+                    <td class="text-center">
+                        @if (product.StockQuantity == 0)
+                        {
+                            <span class="badge bg-danger">Hết hàng</span>
+                        }
+                        else if (product.StockQuantity < 10)
+                        {
+                            <span class="badge bg-warning text-dark">Sắp hết (@product.StockQuantity)</span>
+                        }
+                        else
+                        {
+                            @product.StockQuantity
+                        }
+                    </td>
+                    <td class="text-center">
+                        @if (product.IsVisible)
+                        {
+                            <span class="badge bg-success">Đang hiển thị</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Đang ẩn</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a href="@($"admin/products/edit/{product.Id}")" class="btn btn-sm btn-secondary">Sửa</a>
+                        <a href="@($"admin/inventory-history/{product.Id}")" class="btn btn-sm btn-info">Lịch sử</a>
+                        <button class="btn btn-sm btn-warning" @onclick="() => ToggleVisibility(product)">
+                            @(product.IsVisible ? "Ẩn" : "Hiện")
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteProduct(product.Id)">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Product>? productList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        productList = await DbContext.Products
+            .OrderByDescending(p => p.Id)
+            .ToListAsync();
+    }
+
+    private async Task DeleteProduct(int productId)
+    {
+        var product = await DbContext.Products.FindAsync(productId);
+        if (product != null)
+        {
+            if (product.StockQuantity > 1)
+            {
+                ToastSvc.ShowToast(
+                    $"⚠️ Không thể xoá sản phẩm \"{product.Name}\" vì còn {product.StockQuantity} sản phẩm trong kho.",
+                    ToastLevel.Warning
+                );
+                return;
+            }
+
+            DbContext.Products.Remove(product);
+            await DbContext.SaveChangesAsync();
+            productList?.Remove(product);
+            ToastSvc.ShowToast($"✅ Đã xoá sản phẩm \"{product.Name}\" thành công!", ToastLevel.Success);
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleVisibility(Product product)
+    {
+        product.IsVisible = !product.IsVisible;
+        DbContext.Products.Update(product);
+        await DbContext.SaveChangesAsync();
+
+        ToastSvc.ShowToast(
+            product.IsVisible
+                ? $"👁️ Sản phẩm \"{product.Name}\" đã được hiển thị trên website."
+                : $"🙈 Sản phẩm \"{product.Name}\" đã được ẩn khỏi website.",
+            ToastLevel.Info
+        );
+
+        StateHasChanged();
+    }
+}

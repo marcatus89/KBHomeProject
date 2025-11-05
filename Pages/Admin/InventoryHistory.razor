@@ -1,0 +1,61 @@
+@page "/admin/inventory-history/{ProductId:int}"
+@attribute [Authorize(Roles = "Admin, Warehouse")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+
+@if (product == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <h3>Lịch sử Tồn kho: @product.Name</h3>
+
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>Lý do</th>
+                <th class="text-end">Thay đổi</th>
+                <th class="text-end">Tồn kho mới</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (logs != null)
+            {
+                @foreach (var log in logs)
+                {
+                    <tr>
+                        <td>@log.Timestamp.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@log.Reason</td>
+                        <td class="text-end @(log.QuantityChange >= 0 ? "text-success" : "text-danger")">
+                            <strong>@log.QuantityChange.ToString("+#;-#;0")</strong>
+                        </td>
+                        <td class="text-end">@log.NewQuantity</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+     <a href="/admin/products" class="btn btn-secondary">Quay lại</a>
+}
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    private Product? product;
+    private List<InventoryLog>? logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await DbContext.Products.FindAsync(ProductId);
+        if (product != null)
+        {
+            logs = await DbContext.InventoryLogs
+                .Where(l => l.ProductId == ProductId)
+                .OrderByDescending(l => l.Timestamp)
+                .ToListAsync();
+        }
+    }
+}

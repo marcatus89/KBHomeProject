@@ -1,0 +1,119 @@
+@page "/admin/stock-take"
+@attribute [Authorize(Roles = "Admin, Warehouse")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject ToastService ToastSvc
+
+<h3>Kiểm kê & Điều chỉnh Tồn kho</h3>
+
+<div class="card">
+    <div class="card-body">
+        <p class="card-text">
+            Sử dụng giao diện này để kiểm tra và cập nhật số lượng tồn kho thực tế của sản phẩm.
+        </p>
+
+        @if (products == null)
+        {
+            <LoadingSpinner />
+        }
+        else
+        {
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="text-center">Tồn kho Hệ thống</th>
+                        <th class="text-center" style="width: 150px;">Số lượng Thực tế</th>
+                        <th style="width: 120px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var product in products)
+                    {
+                        <tr>
+                            <td>@product.Name</td>
+                            <td class="text-center">@product.StockQuantity</td>
+                            <td>
+                                <InputNumber @bind-Value="product.PhysicalCount" class="form-control" />
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-primary btn-sm" @onclick="() => AdjustStock(product)">
+                                    Điều chỉnh
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ProductViewModel>? products;
+
+    // Sử dụng một ViewModel để thêm thuộc tính PhysicalCount mà không làm ảnh hưởng đến Model chính
+    public class ProductViewModel
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public int StockQuantity { get; set; }
+        public int PhysicalCount { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var productsFromDb = await DbContext.Products.OrderBy(p => p.Name).ToListAsync();
+        products = productsFromDb.Select(p => new ProductViewModel
+        {
+            Id = p.Id,
+            Name = p.Name,
+            StockQuantity = p.StockQuantity,
+            PhysicalCount = p.StockQuantity // Mặc định số lượng thực tế bằng số lượng hệ thống
+        }).ToList();
+    }
+
+    private async Task AdjustStock(ProductViewModel productVM)
+{
+    if (productVM.PhysicalCount < 0)
+    {
+        ToastSvc.ShowToast("❌ Số lượng thực tế không thể nhỏ hơn 0.", ToastLevel.Error);
+        return;
+    }
+
+    var productInDb = await DbContext.Products.FindAsync(productVM.Id);
+    if (productInDb != null)
+    {
+        int oldQuantity = productInDb.StockQuantity;
+        int change = productVM.PhysicalCount - oldQuantity;
+
+        // Chỉ ghi log và cập nhật nếu có sự thay đổi
+        if (change != 0)
+        {
+            productInDb.StockQuantity = productVM.PhysicalCount;
+
+            // Ghi log khi kiểm kê
+            var log = new InventoryLog
+            {
+                ProductId = productInDb.Id,
+                QuantityChange = change, // Ghi lại sự chênh lệch
+                NewQuantity = productInDb.StockQuantity,
+                Reason = "Điều chỉnh kiểm kê kho"
+            };
+            DbContext.InventoryLogs.Add(log);
+
+            await DbContext.SaveChangesAsync();
+
+            // Cập nhật lại giao diện
+            productVM.StockQuantity = productVM.PhysicalCount;
+            ToastSvc.ShowToast($"✅ Đã cập nhật tồn kho cho sản phẩm '{productInDb.Name}'.", ToastLevel.Success);
+        }
+        else
+        {
+            ToastSvc.ShowToast("ℹ️ Số lượng thực tế không thay đổi.", ToastLevel.Info);
+        }
+    }
+}
+
+}
+

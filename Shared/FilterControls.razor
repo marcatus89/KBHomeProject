@@ -1,0 +1,26 @@
+@* Component này chứa các điều khiển để lọc và sắp xếp sản phẩm *@
+<div class="filter-controls-bar mb-4 p-3 bg-light rounded shadow-sm">
+    <div class="row align-items-center">
+        <div class="col-md-4 mb-2 mb-md-0">
+            <strong><span class="oi oi-sort-ascending"></span> Sắp xếp theo:</strong>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" @onchange="OnSortChanged">
+                <option value="default">Mới nhất</option>
+                <option value="price_asc">Giá: Tăng dần</option>
+                <option value="price_desc">Giá: Giảm dần</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<string> SortChanged { get; set; }
+
+    private async Task OnSortChanged(ChangeEventArgs e)
+    {
+        var sortValue = e.Value?.ToString() ?? "default";
+        await SortChanged.InvokeAsync(sortValue);
+    }
+}

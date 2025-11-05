@@ -1,0 +1,76 @@
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject CartService CartSvc
+@implements IDisposable
+
+<header class="app-header">
+    <div class="header-top">
+        <div class="container">
+            <span>Hotline: +84 93 189 48 68 | Email: contact@kbhome.com.vn</span>
+            <div class="header-top-right">
+                <LoginDisplay />
+            </div>
+        </div>
+    </div>
+
+    <div class="header-main">
+        <div class="container">
+            <a href="/" class="header-logo">
+                <img src="/images/logo.png" alt="KBHOME Logo" />
+            </a>
+            <div class="header-search">
+                <SearchForm />
+            </div>
+            <div class="header-actions">
+                <a href="/gio-hang" class="action-item">
+                    <span class="oi oi-cart"></span>
+                    <span>Giỏ hàng (@CartSvc.Items.Count)</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <nav class="header-nav">
+        <div class="container">
+            <ul class="nav-menu-list">
+                <li><NavLink class="nav-link" href="" Match="NavLinkMatch.All">Trang chủ</NavLink></li>
+                <li class="dropdown">
+                    <NavLink class="nav-link" href="san-pham">Sản phẩm</NavLink>
+                    <div class="dropdown-content">
+                        @if (categories != null)
+                        {
+                            @foreach (var category in categories)
+                            {
+                                <a href="@($"/category/{category.Id}")">@category.Name</a>
+                            }
+                        }
+                    </div>
+                </li>
+                <li><NavLink class="nav-link" href="#">Tin tức</NavLink></li>
+                <li><NavLink class="nav-link" href="#">Liên hệ</NavLink></li>
+                
+                <AuthorizeView Roles="Admin, Sales, Warehouse, Logistics,Purchasing">
+                    <li><NavLink class="nav-link" href="admin">Quản trị</NavLink></li>
+                </AuthorizeView>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private List<Category>? categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Đăng ký lắng nghe sự kiện để header tự cập nhật khi giỏ hàng thay đổi
+        CartSvc.OnChange += StateHasChanged;
+        categories = await DbContext.Categories.OrderBy(c => c.Name).ToListAsync();
+    }
+
+    // Hủy đăng ký để tránh rò rỉ bộ nhớ
+    public void Dispose()
+    {
+        CartSvc.OnChange -= StateHasChanged;
+    }
+}
+

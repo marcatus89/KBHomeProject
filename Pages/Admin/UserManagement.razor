@@ -1,0 +1,45 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject UserManager<IdentityUser> UserManager
+
+<h3>Quản lý Người dùng</h3>
+
+<a href="/admin/users/create" class="btn btn-primary mb-3">Tạo người dùng mới</a>
+
+@if (userList == null)
+{
+    <p><em>Đang tải danh sách...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Email / Tên đăng nhập</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in userList)
+            {
+                <tr>
+                    <td>@user.Email</td>
+                    <td>
+                        <a href="@($"admin/users/manage-roles/{user.Id}")" class="btn btn-sm btn-info">Quản lý Quyền</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<IdentityUser>? userList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userList = await UserManager.Users.ToListAsync();
+    }
+}
