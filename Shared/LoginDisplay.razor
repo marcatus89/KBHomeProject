@@ -2,12 +2,36 @@
 
 <AuthorizeView>
     <Authorized>
-        @* Thay đổi link để trỏ đến trang Profile *@
-        <a href="/profile">Hello, @context.User.Identity?.Name!</a>
-        <a href="logout" class="nav-link btn btn-link">Log out</a>
+        <div class="d-flex align-items-center gap-2">
+            <NavLink class="nav-link d-flex align-items-center text-primary fw-semibold" href="profile">
+                <i class="bi bi-person-circle me-1"></i> 
+                <span>Hồ sơ</span>
+            </NavLink>
+
+            <span class="text-primary me-2 fw-semibold">
+                Xin chào, @context.User.Identity?.Name!
+            </span>
+
+            <a href="logout" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+            </a>
+        </div>
     </Authorized>
-    <NotAuthorized>
-        <a href="Identity/Account/Register">Register</a>
-        <a href="Identity/Account/Login">Log in</a>
-    </NotAuthorized>
+
+   <NotAuthorized>
+    <div class="d-flex gap-2">
+        <!-- Đăng ký -->
+        <button class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                @onclick="@(() => Navigation.NavigateTo("/Identity/Account/Register", forceLoad: true))">
+            <i class="bi bi-person-plus"></i> Đăng ký
+        </button>
+
+        <!-- Đăng nhập -->
+        <button class="btn btn-primary btn-sm rounded-pill px-3"
+                @onclick="@(() => Navigation.NavigateTo("/Identity/Account/Login", forceLoad: true))">
+            <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+        </button>
+    </div>
+</NotAuthorized>
+
 </AuthorizeView>

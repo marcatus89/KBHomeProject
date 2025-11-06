@@ -4,32 +4,39 @@
 @implements IDisposable
 
 <header class="app-header">
+    <!-- Top contact strip with hotline and email -->
     <div class="header-top">
-        <div class="container">
-            <span>Hotline: +84 93 189 48 68 | Email: contact@kbhome.com.vn</span>
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="contact-info">
+                <span class="oi oi-phone me-1"></span> +84 93 189 48 68
+                <span class="mx-3">|</span>
+                <span class="oi oi-envelope-closed me-1"></span> contact@kbhome.com.vn
+            </div>
             <div class="header-top-right">
                 <LoginDisplay />
             </div>
         </div>
     </div>
 
+    <!-- Main area with logo, search bar and cart -->
     <div class="header-main">
-        <div class="container">
+        <div class="container d-flex justify-content-between align-items-center">
             <a href="/" class="header-logo">
                 <img src="/images/logo.png" alt="KBHOME Logo" />
             </a>
-            <div class="header-search">
+            <div class="header-search flex-grow-1 mx-4">
                 <SearchForm />
             </div>
-            <div class="header-actions">
-                <a href="/gio-hang" class="action-item">
-                    <span class="oi oi-cart"></span>
+            <div class="header-actions d-flex align-items-center">
+                <a href="/gio-hang" class="action-item d-flex align-items-center">
+                    <span class="oi oi-cart me-1"></span>
                     <span>Giỏ hàng (@CartSvc.Items.Count)</span>
                 </a>
             </div>
         </div>
     </div>
 
+    <!-- Navigation menu -->
     <nav class="header-nav">
         <div class="container">
             <ul class="nav-menu-list">
@@ -48,7 +55,7 @@
                 </li>
                 <li><NavLink class="nav-link" href="#">Tin tức</NavLink></li>
                 <li><NavLink class="nav-link" href="#">Liên hệ</NavLink></li>
-                
+
                 <AuthorizeView Roles="Admin, Sales, Warehouse, Logistics,Purchasing">
                     <li><NavLink class="nav-link" href="admin">Quản trị</NavLink></li>
                 </AuthorizeView>
@@ -73,4 +80,3 @@
         CartSvc.OnChange -= StateHasChanged;
     }
 }
-

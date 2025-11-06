@@ -1,10 +1,19 @@
 
 export function initCarousel(selector) {
-  var myCarousel = document.querySelector(selector);
-  if (myCarousel) {
-    var carousel = new bootstrap.Carousel(myCarousel, {
-      interval: 5000, 
-      wrap: true
-    });
-  }
+    const element = document.querySelector(selector);
+    if (element) {
+        const carousel = new bootstrap.Carousel(element, {
+            interval: 5000,
+            ride: 'carousel'
+        });
+        element._carouselInstance = carousel;
+    }
+}
+
+export function disposeCarousel(selector) {
+    const element = document.querySelector(selector);
+    if (element && element._carouselInstance) {
+        element._carouselInstance.dispose();
+        delete element._carouselInstance;
+    }
 }

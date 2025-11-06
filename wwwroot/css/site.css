@@ -182,88 +182,101 @@ a:hover {
     opacity: 1;
 }
 
-/* --- ENHANCED SLIDER STYLES --- */
+/* ===== HERO SLIDER REFINED STYLE ===== */
 #heroCarousel {
-    height: 60vh;
-    min-height: 450px;
+    width: 100%;
+    height: 100vh; /* ✅ Full màn hình, có thể đổi 80vh nếu muốn nhỏ hơn */
+    position: relative;
+    overflow: hidden;
+}
+
+#heroCarousel .carousel-inner {
+    width: 100%;
+    height: 100%;
 }
 
 #heroCarousel .carousel-item {
+    width: 100%;
     height: 100%;
-    transition: opacity 0.6s ease-in-out; 
 }
 
 #heroCarousel .carousel-item img {
+    width: 100%;
     height: 100%;
-    object-fit: cover;
-    filter: brightness(50%); 
+    object-fit: cover;      /* ✅ hình phủ khung */
+    object-position: center center; /* ✅ căn giữa */
+    display: block;
 }
 
+/* Đảm bảo caption nổi lên trên ảnh */
 #heroCarousel .carousel-caption {
+    position: absolute;
     top: 50%;
+    left: 10%;
     transform: translateY(-50%);
-    bottom: auto;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    z-index: 2;
+    color: white;
 }
 
 #heroCarousel .carousel-caption h1 {
-    font-size: 3.2rem;
+    font-size: 3.6rem;
     font-weight: 700;
     margin-bottom: 1rem;
+    line-height: 1.2;
+    text-shadow: 2px 3px 8px rgba(245, 210, 210, 0.4);
 }
+
 #heroCarousel .carousel-caption p {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 300;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 1.5rem;
 }
 
 #heroCarousel .carousel-caption .btn-light {
-    font-weight: 600;
-    padding: 12px 30px;
-    border-radius: 50px;
-    border: 2px solid white;
+    border: 2px solid var(--accent-color);
+    color: var(--accent-color);
     background-color: transparent;
-    color: white;
+    padding: 12px 32px;
+    border-radius: 50px;
+    font-weight: 600;
     transition: all 0.3s ease;
 }
+
 #heroCarousel .carousel-caption .btn-light:hover {
-    background-color: white;
-    color: var(--dark-color);
+    background-color: var(--accent-color);
+    color: var(--primary-color);
 }
 
 #heroCarousel .carousel-indicators button {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    margin: 0 8px;
+    margin: 0 6px;
     background-color: #fff;
-    opacity: 0.5;
+    opacity: 0.6;
     transition: opacity 0.3s ease;
 }
 
 #heroCarousel .carousel-indicators .active {
     opacity: 1;
+    background-color: var(--accent-color);
 }
 
 #heroCarousel .carousel-control-prev,
 #heroCarousel .carousel-control-next {
-    width: 50px;
-    height: 50px;
-    background-color: rgba(255, 255, 255, 0.2);
+    width: 55px;
+    height: 55px;
+    background-color: rgba(255, 255, 255, 0.25);
     border-radius: 50%;
+    transition: all 0.3s ease;
     top: 50%;
     transform: translateY(-50%);
-    transition: background-color 0.3s ease;
-}
-#heroCarousel .carousel-control-prev {
-    left: 2rem;
-}
-#heroCarousel .carousel-control-next {
-    right: 2rem;
 }
 
 #heroCarousel .carousel-control-prev:hover,
 #heroCarousel .carousel-control-next:hover {
-    background-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(212, 175, 55, 0.6);
 }
 /* --- END SLIDER STYLES --- */
 
@@ -461,7 +474,7 @@ a:hover {
 }
 
 .partner-logos img {
-    height: 40px;
+    height: 190px;
     margin: 15px;
     filter: grayscale(100%);
     opacity: 0.6;
