@@ -1,0 +1,101 @@
+@page "/admin/logistics"
+@attribute [Authorize(Roles = "Admin, Logistics")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+
+<h3>Bảng điều khiển Giao nhận</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <span class="oi oi-task"></span> Đơn hàng cần tạo Vận đơn
+            </div>
+            <div class="card-body">
+                @if (ordersReadyForDispatch == null)
+                {
+                    <LoadingSpinner />
+                }
+                else if (!ordersReadyForDispatch.Any())
+                {
+                    <p class="text-info mt-3">Không có đơn hàng nào sẵn sàng để giao.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var order in ordersReadyForDispatch)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Đơn hàng #@order.Id - @order.CustomerName
+                                <a href="@($"/admin/shipments/create/{order.Id}")" class="btn btn-sm btn-primary">Tạo Vận đơn</a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <span class="oi oi-location"></span> Các đơn hàng đang giao
+            </div>
+             <div class="card-body">
+                @if (ongoingShipments == null)
+                {
+                    <LoadingSpinner />
+                }
+                else if (!ongoingShipments.Any())
+                {
+                    <p class="text-secondary mt-3">Không có đơn hàng nào đang trên đường.</p>
+                }
+                else
+                {
+                     <ul class="list-group">
+                        @foreach (var shipment in ongoingShipments)
+                        {
+                             <li class="list-group-item">
+                                <a href="@($"/admin/orders/{shipment.OrderId}")">
+                                    <strong>Vận đơn:</strong> @shipment.TrackingNumber
+                                </a>
+                                <br/>
+                                <span>Khách hàng: @shipment.Order?.CustomerName</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Order>? ordersReadyForDispatch;
+    private List<Shipment>? ongoingShipments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Lấy ID của các đơn hàng đã có vận đơn
+        var dispatchedOrderIds = await DbContext.Shipments.Select(s => s.OrderId).ToListAsync();
+
+        // Lấy các đơn hàng "Sẵn sàng giao hàng" VÀ chưa có vận đơn
+        var readyTask = DbContext.Orders
+            .Where(o => o.Status == "Sẵn sàng giao hàng" && !dispatchedOrderIds.Contains(o.Id))
+            .OrderBy(o => o.OrderDate)
+            .ToListAsync();
+            
+        // Lấy các vận đơn của những đơn hàng "Đang giao"
+        var ongoingTask = DbContext.Shipments
+            .Include(s => s.Order)
+            .Where(s => s.Order != null && s.Order.Status == "Đang giao")
+            .OrderBy(s => s.DispatchedDate)
+            .ToListAsync();
+            
+        await Task.WhenAll(readyTask, ongoingTask);
+
+        ordersReadyForDispatch = await readyTask;
+        ongoingShipments = await ongoingTask;
+    }
+}
+

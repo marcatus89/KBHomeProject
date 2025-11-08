@@ -1,0 +1,74 @@
+@page "/san-pham/{ProductId:int}"
+@using DoAnTotNghiep.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Logging
+@inject ApplicationDbContext DbContext
+@inject CartService CartSvc
+@inject ToastService ToastSvc
+@inject ILogger<ProductDetail> Logger
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (product == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <div class="product-detail-container">
+        <div class="row">
+            <div class="col-md-6">
+                <img src="@product.ImageUrl" alt="@product.Name" class="img-fluid rounded" />
+            </div>
+            <div class="col-md-6">
+                <h3>@product.Name</h3>
+                <h4 class="price-tag">@product.Price.ToString("n0") VNĐ</h4>
+                
+                <p class="mt-3"><em>Đây là mô tả chi tiết cho sản phẩm @product.Name.</em></p>
+                
+                <button class="btn btn-primary btn-lg" @onclick="() => AddProductToCart(product)">
+                    <span class="oi oi-cart"></span> 
+                    Thêm vào giỏ hàng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    private Product? product;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            product = await DbContext.Products.FindAsync(ProductId);
+            
+            if (product == null)
+            {
+                errorMessage = $"Không tìm thấy sản phẩm với ID: {ProductId}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi tải thông tin sản phẩm cơ bản.");
+            errorMessage = "Đã có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.";
+        }
+    }
+
+    private void AddProductToCart(Product productToAdd)
+    {
+        if (productToAdd != null)
+        {
+            CartSvc.AddToCart(productToAdd);
+            ToastSvc.ShowToast("Đã thêm sản phẩm vào giỏ hàng!", ToastLevel.Success);
+        }
+    }
+}
+

@@ -1,0 +1,164 @@
+@page "/admin/purchase-orders/{PurchaseOrderId:int}"
+@attribute [Authorize(Roles = "Admin, Purchasing, Warehouse")]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h3>Chi tiết Đơn nhập hàng #@PurchaseOrderId</h3>
+
+@if (purchaseOrder == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    @* --- Khu vực in không đổi --- *@
+    <div id="printable-area" class="printable-container">
+        <h2 class="text-center">PHIẾU NHẬP KHO</h2>
+        <p class="text-center"><strong>Số phiếu:</strong> @purchaseOrder.PurchaseOrderNumber</p>
+        <hr />
+        <p><strong>Nhà cung cấp:</strong> @purchaseOrder.Supplier?.Name</p>
+        <p><strong>Ngày đặt hàng:</strong> @purchaseOrder.OrderDate.ToString("dd/MM/yyyy")</p>
+        <p><strong>Ngày nhận dự kiến:</strong> @purchaseOrder.ExpectedDeliveryDate?.ToString("dd/MM/yyyy")</p>
+        <table class="table table-bordered mt-4">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Tên Sản phẩm</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    int count = 1;
+                    decimal total = 0;
+                }
+                @foreach (var item in purchaseOrder.Items)
+                {
+                    var subtotal = item.Quantity * item.UnitPrice;
+                    total += subtotal;
+                    <tr>
+                        <td>@(count++)</td>
+                        <td>@item.Product?.Name</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.UnitPrice.ToString("n0")</td>
+                        <td>@subtotal.ToString("n0")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" class="text-end"><strong>Tổng cộng</strong></td>
+                    <td><strong>@total.ToString("n0") VNĐ</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="signature-section">
+            <div class="signature-box">
+                <p><strong>Người lập phiếu</strong></p>
+                <p>(Ký, họ tên)</p>
+            </div>
+            <div class="signature-box">
+                <p><strong>Thủ kho</strong></p>
+                <p>(Ký, họ tên)</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="display-area" class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+             <div>
+                <strong>Số phiếu:</strong> @purchaseOrder.PurchaseOrderNumber | 
+                <strong>Nhà cung cấp:</strong> @purchaseOrder.Supplier?.Name | 
+                <strong>Trạng thái:</strong> <span class="badge @(purchaseOrder.Status == "Đã nhận hàng" ? "bg-success" : "bg-warning text-dark")">@purchaseOrder.Status</span>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="Print">
+                <span class="oi oi-print"></span> In Phiếu
+            </button>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Danh sách sản phẩm</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Số lượng đặt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in purchaseOrder.Items)
+                    {
+                        <tr>
+                            <td>@item.Product?.Name</td>
+                            <td>@item.Quantity</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <AuthorizeView Roles="Admin, Warehouse">
+                @if (purchaseOrder.Status == "Đã đặt hàng")
+                {
+                    <button class="btn btn-success" @onclick="HandleReceiveItems">Xác nhận đã nhận đủ hàng</button>
+                }
+            </AuthorizeView>
+            <a href="/admin/purchase-orders" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter]
+    public int PurchaseOrderId { get; set; }
+    private PurchaseOrder? purchaseOrder;
+
+    protected override async Task OnInitializedAsync()
+    {
+        purchaseOrder = await DbContext.PurchaseOrders
+            .Include(po => po.Supplier)
+            .Include(po => po.Items)
+                .ThenInclude(item => item.Product)
+            .FirstOrDefaultAsync(po => po.Id == PurchaseOrderId);
+    }
+
+    private async Task HandleReceiveItems()
+    {
+        if (purchaseOrder != null)
+        {
+            foreach (var item in purchaseOrder.Items)
+            {
+                var productInDb = await DbContext.Products.FindAsync(item.ProductId);
+                if (productInDb != null)
+                {
+                    productInDb.StockQuantity += item.Quantity;
+
+                    // --- GHI LOG KHI NHẬP HÀNG ---
+                    var log = new InventoryLog
+                    {
+                        ProductId = item.ProductId,
+                        QuantityChange = item.Quantity, // Ghi số dương vì là nhập kho
+                        NewQuantity = productInDb.StockQuantity,
+                        Reason = $"Nhập hàng từ phiếu {purchaseOrder.PurchaseOrderNumber}"
+                    };
+                    DbContext.InventoryLogs.Add(log);
+                }
+            }
+            
+            purchaseOrder.Status = "Đã nhận hàng";
+            
+            await DbContext.SaveChangesAsync();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task Print()
+    {
+        await JSRuntime.InvokeVoidAsync("triggerPrint");
+    }
+}
+
